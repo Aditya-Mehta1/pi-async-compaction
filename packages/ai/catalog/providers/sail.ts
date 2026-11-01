@@ -14,6 +14,8 @@ export default defineProvider({
 			baseUrl: "https://api.sailresearch.com/v1",
 			headers: { "X-Sail-Completion-Window": "asap" },
 			reasoning: true,
+			// Sail accepts both names for its highest effort tier: https://docs.sailresearch.com/support
+			thinkingLevelMap: { xhigh: "xhigh", max: "max" },
 			input: ["text"],
 			contextWindow: 1000000,
 			// shortcut: cap output at 32K until Sail publishes a model-specific output limit.
