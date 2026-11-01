@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getModel, streamSimple } from "../src/compat.ts";
+import { getModel, getSupportedThinkingLevels, streamSimple } from "../src/compat.ts";
 import { sailProvider } from "../src/providers/sail.ts";
 
 const upstreamId = "deepseek-ai/DeepSeek-V4.1-Flash-1017";
@@ -43,23 +43,35 @@ describe("Sail models", () => {
 		});
 	});
 
-	it.each([upstreamId, `${upstreamId}-balanced`] as const)("sends the upstream model ID for %s", async (modelId) => {
-		let payload: Record<string, unknown> | undefined;
+	it.each([upstreamId, `${upstreamId}-balanced`] as const)(
+		"preserves the model ID and thinking levels for %s",
+		async (modelId) => {
+			const model = getModel("sail", modelId);
+			expect(getSupportedThinkingLevels(model)).toEqual(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 
-		await streamSimple(
-			getModel("sail", modelId),
-			{ messages: [{ role: "user", content: "test", timestamp: 0 }] },
-			{
-				apiKey: "test-sail-key",
-				cacheRetention: "long",
-				onPayload: (value) => {
-					payload = value as Record<string, unknown>;
-					throw new Error("payload captured");
-				},
-			},
-		).result();
+			for (const reasoning of ["off", "xhigh", "max"] as const) {
+				let payload: Record<string, unknown> | undefined;
+				const result = await streamSimple(
+					model,
+					{ messages: [{ role: "user", content: "test", timestamp: 0 }] },
+					{
+						apiKey: "test-sail-key",
+						cacheRetention: "long",
+						...(reasoning === "off" ? {} : { reasoning }),
+						onPayload: (value) => {
+							payload = value as Record<string, unknown>;
+							throw new Error("payload captured");
+						},
+					},
+				).result();
 
-		expect(payload).toMatchObject({ model: upstreamId });
-		expect(payload?.prompt_cache_retention).toBeUndefined();
-	});
+				expect(result.errorMessage).toBe("payload captured");
+				expect(payload).toMatchObject({
+					model: upstreamId,
+					reasoning: { effort: reasoning === "off" ? "none" : reasoning },
+				});
+				expect(payload?.prompt_cache_retention).toBeUndefined();
+			}
+		},
+	);
 });
