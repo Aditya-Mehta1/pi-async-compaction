@@ -10,7 +10,7 @@ export function sailProvider(): Provider<"openai-responses"> {
 		id: "sail",
 		name: "Sail",
 		baseUrl: "https://api.sailresearch.com/v1",
-		auth: { apiKey: envApiKeyAuth("Sail API key", []) },
+		auth: { apiKey: envApiKeyAuth("Sail API key", ["SAIL_API_KEY"]) },
 		models: Object.values(SAIL_MODELS),
 		api: openAIResponsesApi(),
 	});
