@@ -54,6 +54,13 @@ afterEach(() => {
 });
 
 describe("environment API keys", () => {
+	it("discovers and resolves Sail credentials from SAIL_API_KEY", () => {
+		const env = { SAIL_API_KEY: "test-sail-key" };
+
+		expect(findEnvKeys("sail", env)).toEqual(["SAIL_API_KEY"]);
+		expect(getEnvApiKey("sail", env)).toBe("test-sail-key");
+	});
+
 	it("does not treat generic GitHub tokens as GitHub Copilot credentials", () => {
 		delete process.env.COPILOT_GITHUB_TOKEN;
 		process.env.GH_TOKEN = "gh-token";

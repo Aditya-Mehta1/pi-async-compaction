@@ -30,17 +30,35 @@ describe("Sail models", () => {
 		expect(model.cost).toEqual({ input: 0.07, output: 0.22, cacheRead: 0.005, cacheWrite: 0 });
 	});
 
-	it("resolves the stored API key without an environment fallback", async () => {
+	it("resolves SAIL_API_KEY and gives stored credentials precedence", async () => {
 		const auth = sailProvider().auth!.apiKey!;
 		const options = {
-			ctx: { env: async () => "unused-env-key", fileExists: async () => false },
+			ctx: {
+				env: async (name: string) => (name === "SAIL_API_KEY" ? "test-env-key" : undefined),
+				fileExists: async () => false,
+			},
 			signal: new AbortController().signal,
 		};
 
-		expect(await auth.resolve(options)).toBeUndefined();
+		expect(await auth.resolve(options)).toMatchObject({
+			auth: { apiKey: "test-env-key" },
+			source: "SAIL_API_KEY",
+		});
 		expect(await auth.resolve({ ...options, credential: { type: "api_key", key: "test-sail-key" } })).toMatchObject({
 			auth: { apiKey: "test-sail-key" },
+			source: "stored credential",
 		});
+	});
+
+	it("remains unconfigured without a stored key or SAIL_API_KEY", async () => {
+		const auth = sailProvider().auth!.apiKey!;
+
+		expect(
+			await auth.resolve({
+				ctx: { env: async () => undefined, fileExists: async () => false },
+				signal: new AbortController().signal,
+			}),
+		).toBeUndefined();
 	});
 
 	it.each([upstreamId, `${upstreamId}-balanced`] as const)(
