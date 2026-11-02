@@ -39,7 +39,12 @@ import type {
 } from "./types.ts";
 import { recordUsage } from "./usage.ts";
 
-export type CompactionInput = { reason: CompactionReason; instructions?: string };
+export type CompactionInput = {
+	reason: CompactionReason;
+	instructions?: string;
+	/** Background summarizer resolved at admission; absent: use the conversation's model and request options. */
+	summarizer?: ModelRef;
+};
 
 /** The pinned summarization request. */
 export type SummaryRequest = {
@@ -113,18 +118,24 @@ Keep each section concise. Preserve exact file paths, function names, and error 
  */
 export const CompactionTask = defineTask<CompactionInput, CompactionCheckpoint, CompactionResult, CompactionHooks>({
 	name: "pi.compaction",
-	version: 1,
+	version: 2,
 	initial: () => ({ phase: "select" }),
+	// Older runtimes must not run a task whose summarizer override they would ignore.
+	migrate: (input, checkpoint) => ({
+		input: input as CompactionInput,
+		checkpoint: checkpoint as CompactionCheckpoint,
+	}),
 	phases: {
 		select: async (task, runtime, context) => {
 			if (cutOffTooOften(task, runtime)) return failCutOff(runtime, task, context);
 			const { conversationId } = runtime;
 			const agent = await runtime.agent(context);
 			const settings = runtime.settings;
-			const ref = agent.model;
-			const model = ref === undefined ? undefined : runtime.models.getModel(ref.provider, ref.modelId);
-			if (ref === undefined || model === undefined) return failNoModel(runtime, ref, context);
-			const policy = compactionPolicy(settings, ref);
+			if (agent.model === undefined) return failNoModel(runtime, undefined, context);
+			const policy = compactionPolicy(settings, agent.model);
+			const ref = task.input.summarizer ?? agent.model;
+			const model = runtime.models.getModel(ref.provider, ref.modelId);
+			if (model === undefined) return failNoModel(runtime, ref, context);
 			const view = await runtime.context(conversationId, context);
 			const cut = selectCut(view, policy.keepRecentTokens);
 			if (cut === undefined) return complete(runtime, context);
@@ -143,11 +154,14 @@ export const CompactionTask = defineTask<CompactionInput, CompactionCheckpoint, 
 			});
 			if (decision !== undefined && "decline" in decision) return complete(runtime, context);
 			if (decision !== undefined) return place(runtime, firstKept, decision.summary, context);
+			const { timeoutMs, maxRetries, maxRetryDelayMs } = settings.stream;
 			const request: SummaryRequest = {
 				attempt: 1,
 				model: ref,
 				thinkingLevel: agent.thinkingLevel,
-				streamOptions: settings.stream,
+				// Foreground routing, auth headers, transport and metadata must not leak to another summarizer.
+				streamOptions:
+					task.input.summarizer === undefined ? settings.stream : { timeoutMs, maxRetries, maxRetryDelayMs },
 				maxTokens: Math.min(
 					Math.floor(0.8 * policy.reserveTokens),
 					model.maxTokens > 0 ? model.maxTokens : Number.POSITIVE_INFINITY,
@@ -243,6 +257,13 @@ export const CompactionTask = defineTask<CompactionInput, CompactionCheckpoint, 
 		}, context);
 	},
 });
+
+/** Resolve the background summarizer at admission, before later settings changes can affect this task. */
+export function backgroundSummarizer(settings: Settings): ModelRef | undefined {
+	return settings.compaction.background?.kind === "async-background"
+		? { provider: "sail", modelId: "deepseek-ai/DeepSeek-V4.1-Flash-1017-balanced" }
+		: undefined;
+}
 
 /**
  * Create a compaction task with its status in this commit. `owner` is the generation that waits for it (a blocking

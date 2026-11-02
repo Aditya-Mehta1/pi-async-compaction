@@ -570,6 +570,8 @@ export type CompactionPolicy = {
  * replaces the harness-wide one for that model, so small- and large-window models can share a harness.
  */
 export type CompactionSettings = Partial<CompactionPolicy> & {
+	/** Background tasks use Sail Balanced; omitted: the conversation's model. Manual and blocking tasks are unchanged. */
+	readonly background?: { readonly kind: "async-background" };
 	readonly modelOverrides?: Readonly<Record<string, Partial<CompactionPolicy>>>;
 };
 
@@ -653,7 +655,7 @@ export type Settings = {
 	readonly stream: ConversationStreamOptions;
 	readonly retry: ConversationRetryPolicy;
 	/** Harness-wide policy over the defaults; per-model overrides apply where the model is known. */
-	readonly compaction: CompactionPolicy & Pick<CompactionSettings, "modelOverrides">;
+	readonly compaction: CompactionPolicy & Pick<CompactionSettings, "background" | "modelOverrides">;
 	readonly progress: ProgressPolicy;
 	readonly toolExecution: ToolExecutionMode;
 	readonly steeringMode: QueueMode;
