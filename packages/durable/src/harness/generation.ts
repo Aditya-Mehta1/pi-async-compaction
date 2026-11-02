@@ -29,7 +29,7 @@ import type {
 	TypedEntry,
 } from "../types.ts";
 import { addTools, agentHooks, sectionExtension } from "./agent.ts";
-import { compactionPolicy, createCompaction, estimateContext, selectCut } from "./compaction.ts";
+import { backgroundSummarizer, compactionPolicy, createCompaction, estimateContext, selectCut } from "./compaction.ts";
 import { applyBoundary, type Boundary, hasQueuedReset, prepareBoundary, withdrawQueuedInputs } from "./inbox.ts";
 import {
 	cutOffCount,
@@ -246,7 +246,11 @@ export const GenerationTask = defineTask<GenerationInput, GenerationCheckpoint, 
 				for (const entry of entries) cutoff = (await tx.appendEntry(SystemEntry, conversationId, entry)).id;
 				// Checked in this commit, so a compaction admitted during preparation counts.
 				if (threshold === "background" && (await tx.doc(LiveDoc, conversationId)).compactions === undefined) {
-					await createCompaction(tx, conversationId, { reason: "threshold" });
+					const summarizer = backgroundSummarizer(runtime.settings);
+					await createCompaction(tx, conversationId, {
+						reason: "threshold",
+						...(summarizer === undefined ? {} : { summarizer }),
+					});
 				}
 				const request = {
 					attempt,
