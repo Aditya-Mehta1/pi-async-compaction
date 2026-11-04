@@ -7,11 +7,12 @@
 This makes sense, compaction should be instant because - if we are continously compacting, we don't need to wait for the context window filling up to compact.
 We can simply kick off compaction **async, before** while generation is still happening.
 
-Since this workflow is async, we can run it at balanced latency (= lower costs), ~for free<sup>*</sup>
+Since this workflow is async, we can run it at balanced latency (= lower costs), ~for free<a name="compaction-note-ref"></a><sup>[[1]](#compaction-note)</sup>
 
 This demo implements _async_ compaction (running during generation ie) on _Sail balanced_ inference: to get TODO: insert numbers cheaper compaction without impacting performance.
 
-<sub>* for free here since if we are working at a lower <em>effective</em> context window of a model (ie << the total possible a API allows, eg 200 or 500k for a 1mn context model) we only compact when we chose to. We wait for the current turn generation / model response to complete and tools to run before changing the prompt with the summary (appending the uncompacted turns to the summary) </sub>
+<a name="compaction-note"></a>
+<sub><a href="#compaction-note-ref">[1]</a> for free here since if we are working at a lower <em>effective</em> context window of a model (ie << the total possible a API allows, eg 200 or 500k for a 1mn context model) we only compact when we chose to. We wait for the current turn generation / model response to complete and tools to run before changing the prompt with the summary (appending the uncompacted turns to the summary) </sub>
 
 ### Durable coding agent
 
