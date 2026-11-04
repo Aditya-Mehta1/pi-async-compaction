@@ -11,8 +11,6 @@ Since this workflow is async, we can run it at balanced latency (= lower costs),
 
 This demo implements _async_ compaction (running during generation ie) on _Sail balanced_ inference: to get TODO: insert numbers cheaper compaction without impacting performance.
 
----
-
 <sub>* for free here since if we are working at a lower <em>effective</em> context window of a model (ie << the total possible a API allows, eg 200 or 500k for a 1mn context model) we only compact when we chose to. We wait for the current turn generation / model response to complete and tools to run before changing the prompt with the summary (appending the uncompacted turns to the summary) </sub>
 
 ### Durable coding agent
