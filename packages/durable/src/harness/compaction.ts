@@ -290,6 +290,7 @@ export function compactionPolicy(settings: Settings, model: ModelRef): Compactio
 	const override = modelOverrides?.[`${model.provider}/${model.modelId}`];
 	return {
 		enabled: override?.enabled ?? policy.enabled,
+		blocking: override?.blocking ?? policy.blocking,
 		reserveTokens: override?.reserveTokens ?? policy.reserveTokens,
 		keepRecentTokens: override?.keepRecentTokens ?? policy.keepRecentTokens,
 		backgroundTokens: override?.backgroundTokens ?? policy.backgroundTokens,

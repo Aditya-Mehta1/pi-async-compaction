@@ -4,6 +4,7 @@ import { appendFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+import { cleanupSessionResources } from "@earendil-works/pi-ai";
 import { isValidThinkingLevel } from "../../cli/args.ts";
 import { runPrint } from "./print.ts";
 import { openDurable } from "./runtime.ts";
@@ -18,6 +19,7 @@ const { values } = parseArgs({
 		thinking: { type: "string" },
 		"background-compaction": { type: "string", default: "normal" },
 		"background-tokens": { type: "string" },
+		"no-blocking-compaction": { type: "boolean" },
 	},
 });
 if (!values["prompt-file"]) throw new Error("--prompt-file is required");
@@ -43,6 +45,7 @@ const runtime = await openDurable(
 		thinkingLevel: values.thinking,
 		backgroundCompaction,
 		backgroundTokens,
+		blockingCompaction: values["no-blocking-compaction"] ? false : undefined,
 	},
 	BACKGROUND_CONTEXT,
 );
@@ -62,5 +65,9 @@ try {
 	}
 } finally {
 	for (const signal of signals) process.off(signal, stop);
-	await runtime.close();
+	try {
+		await runtime.close();
+	} finally {
+		cleanupSessionResources();
+	}
 }

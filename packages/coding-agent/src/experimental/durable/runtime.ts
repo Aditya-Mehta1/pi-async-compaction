@@ -22,6 +22,7 @@ export interface DurableOptions {
 	thinkingLevel?: ModelThinkingLevel;
 	backgroundCompaction: "normal" | "async";
 	backgroundTokens?: number;
+	blockingCompaction?: boolean;
 }
 
 export type DurableRuntime = Awaited<ReturnType<typeof openDurable>>;
@@ -77,6 +78,7 @@ export async function openDurable(options: DurableOptions, context: Context) {
 						followUpMode: settings.getFollowUpMode(),
 						compaction: {
 							...settings.getCompactionSettings(),
+							blocking: options.blockingCompaction,
 							modelOverrides: settings.getSettings().compaction?.modelOverrides,
 							...(options.backgroundTokens === undefined ? {} : { backgroundTokens: options.backgroundTokens }),
 							background:

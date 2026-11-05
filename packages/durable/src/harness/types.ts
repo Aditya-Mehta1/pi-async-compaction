@@ -557,6 +557,8 @@ export type ConversationRetryPolicy = {
 export type CompactionPolicy = {
 	/** Threshold and overflow compaction. */
 	enabled: boolean;
+	/** Default true. False disables blocking threshold and overflow compaction, leaving background and manual available. */
+	blocking?: boolean;
 	/** Room kept free for the answer: generation blocks to compact above `contextWindow - reserveTokens`. */
 	reserveTokens: number;
 	/** Approximate size of the recent context a summary keeps verbatim. */
