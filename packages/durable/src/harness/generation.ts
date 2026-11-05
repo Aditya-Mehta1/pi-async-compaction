@@ -449,8 +449,8 @@ function createToolTask(
 
 /**
  * Which threshold compaction preparation starts before its request (spec §8.3): `blocking` above
- * `contextWindow - reserveTokens`, `background` above the background threshold, and only when range selection finds a
- * cut. The caller starts a background one only while no compaction is listed.
+ * `contextWindow - reserveTokens` when blocking is enabled, `background` above the background threshold, and only
+ * when range selection finds a cut. The caller starts a background one only while no compaction is listed.
  */
 function thresholdCompaction(
 	view: ContextView,
@@ -466,7 +466,11 @@ function thresholdCompaction(
 	const blocking = contextWindow - policy.reserveTokens;
 	const background = blocking - policy.backgroundTokens;
 	const over =
-		tokens > blocking ? "blocking" : policy.backgroundTokens > 0 && tokens > background ? "background" : undefined;
+		policy.blocking !== false && tokens > blocking
+			? "blocking"
+			: policy.backgroundTokens > 0 && tokens > background
+				? "background"
+				: undefined;
 	if (over === undefined || selectCut(view, policy.keepRecentTokens) === undefined) return undefined;
 	return over;
 }
@@ -805,7 +809,7 @@ async function classify(
 	const settings = runtime.settings;
 	const overflow = message.stopReason === "error" && isContextOverflow(message);
 	const compaction = compactionPolicy(settings, ref);
-	if (overflow && compacted === undefined && compaction.enabled) {
+	if (overflow && compacted === undefined && compaction.enabled && compaction.blocking !== false) {
 		const view = await runtime.context(conversationId, context, { at: cutoff });
 		if (selectCut(view, compaction.keepRecentTokens) !== undefined) {
 			const text = message.errorMessage ?? "Context overflow";
