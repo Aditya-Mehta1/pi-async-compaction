@@ -23,3 +23,5 @@ A headless coding agent on Pi Durable.
 - `sessions.ts`: session directories and the process lock.
 - `prompt.ts`: Pi's prompt with Durable's tool descriptions.
 - `print.ts`: submission, committed events, timing, and usage after background work finishes.
+
+`harbor_agent.py` runs Harbor tasks and reports usage, cost, and compaction metrics.
